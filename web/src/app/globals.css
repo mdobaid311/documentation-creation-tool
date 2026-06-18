@@ -1,0 +1,355 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------- */
+/*  Design tokens                                                          */
+/* ----------------------------------------------------------------------- */
+:root {
+  --background: #f7f6fb;
+  --surface: #ffffff;
+  --foreground: #1c1830;
+  --muted: #6b6680;
+  --border: #e8e4f2;
+  --accent: #6d28d9;
+  --accent-strong: #5b21b6;
+  --accent-soft: #f1ebff;
+  --danger: #dc2626;
+  --ring: rgba(109, 40, 217, 0.35);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, Segoe UI, Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ----------------------------------------------------------------------- */
+/*  Reusable component classes                                             */
+/* ----------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.05s;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent-strong);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+.btn-ghost:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--border);
+}
+.btn-danger:hover {
+  background: #fff1f1;
+  border-color: var(--danger);
+}
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 13px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* A guide step wrapped as a card. */
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(20, 16, 48, 0.06);
+  padding: 22px 24px;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.step-card:hover {
+  box-shadow: 0 12px 32px rgba(20, 16, 48, 0.1);
+  border-color: #ddd5f0;
+}
+
+/* Divider above a card's control row (zoom / redact / replace). */
+.card-controls {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.chip-muted {
+  background: #f0eef6;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--foreground);
+  font-family: inherit;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* The click marker overlaid on screenshots — Scribe-style soft spotlight ring.
+   Rendered as an SVG so the ring, glow and fill scale perfectly at any size.
+   Width is set inline as a % of the frame; height auto-follows the viewBox. */
+.click-marker {
+  position: absolute;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 4px 14px rgba(249, 115, 22, 0.35));
+}
+
+/* Frame that crops the zoomed screenshot. */
+.zoom-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 10px 34px rgba(20, 16, 48, 0.1);
+}
+.zoom-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+.zoom-layer img {
+  display: block;
+  width: 100%;
+}
+
+/* Numbered step badge (document style) — gradient with a soft halo ring. */
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #7c3aed, var(--accent-strong));
+  color: #fff;
+  font-weight: 700;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    0 4px 10px rgba(109, 40, 217, 0.35);
+}
+
+/* Gradient avatar shown next to the guide title. */
+.guide-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #c026d3);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.3);
+  flex: 0 0 auto;
+}
+
+/* The large centered screenshot frame on guide pages. */
+.shot-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 10px 34px rgba(20, 16, 48, 0.1);
+}
+
+/* A borderless, document-like editable field used in the editor. */
+.field-bare {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  resize: none;
+  padding: 0;
+}
+.field-bare::placeholder {
+  color: var(--muted);
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.meta-row .meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Print-only cover/title page (hidden on screen). */
+.print-cover {
+  display: none;
+}
+
+@media print {
+  /* margin:0 removes the browser's auto header/footer (page #, date, URL). */
+  @page {
+    margin: 0;
+  }
+  body {
+    background: #fff;
+    padding: 14mm 12mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+
+  /* Cover page: centered logo + title, filling the first printed page.
+     `display:flex` here (unlayered) overrides the Tailwind `hidden` utility
+     inside print, so the cover shows only when printing. */
+  .print-cover {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    /* Fill page 1 minus the body's top+bottom padding (14mm each). */
+    min-height: calc(100vh - 28mm);
+    break-after: page;
+    page-break-after: always;
+  }
+  /* Big, frameless logo (no circle) on the cover. */
+  .print-cover .cover-logo {
+    width: auto;
+    height: auto;
+    max-width: 280px;
+    max-height: 150px;
+    object-fit: contain;
+  }
+  .print-cover .cover-logo-fallback {
+    width: 120px;
+    height: 120px;
+    color: var(--accent);
+  }
+  .print-cover .cover-eyebrow {
+    margin-top: 28px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .print-cover h1 {
+    margin: 10px 0 0;
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    max-width: 20ch;
+    color: var(--foreground);
+  }
+  .print-cover p {
+    margin: 14px 0 0;
+    max-width: 52ch;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .print-cover .cover-rule {
+    margin-top: 26px;
+    width: 56px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+  /* Keep a step (card / number + text + screenshot) from splitting across pages. */
+  ol > li,
+  .step-card,
+  .zoom-frame,
+  .shot-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Cards: keep a clear gap between them on paper (the on-screen spacers are
+     no-print) and drop the shadow (renders as a grey haze when printed). */
+  .step-card {
+    box-shadow: none;
+    margin-bottom: 16px;
+    border-color: #e2ddef;
+  }
+  /* Give the screenshot a little breathing room from the card edges in print. */
+  .zoom-frame,
+  .shot-card {
+    margin-top: 4px;
+  }
+  /* Ensure the orange marker and screenshots print with full colour. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

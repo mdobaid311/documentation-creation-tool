@@ -1,0 +1,47 @@
+// Prisma schema — local-first (SQLite) but cloud-ready.
+// To move to the cloud later: change `provider` to "postgresql" and point
+// DATABASE_URL at your Postgres instance. The repository layer in
+// src/lib/data does not depend on the underlying engine.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A captured documentation guide (a "Scribe").
+model Guide {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @default("")
+  status       String   @default("draft") // draft | published
+  shareId      String?  @unique // public slug when sharing is enabled
+  shareEnabled Boolean  @default(false)
+  sourceUrl    String   @default("") // the page the capture started on
+  logoPath     String? // stored favicon of the captured site (storage key)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  steps Step[]
+}
+
+/// A single step within a guide (one captured action + screenshot).
+model Step {
+  id             String   @id @default(cuid())
+  guideId        String
+  guide          Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  order          Int
+  type           String   @default("click") // click | type | navigate | note
+  title          String   @default("")
+  description    String   @default("")
+  screenshotPath String? // key/path resolved by the storage provider
+  // JSON blob: { clickX, clickY, rect:{x,y,w,h}, viewport:{w,h}, blurs:[{x,y,w,h}] }
+  annotation     String?
+  pageUrl        String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([guideId])
+}

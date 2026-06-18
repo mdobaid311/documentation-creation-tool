@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Next.js
+web/.next/
+web/out/
+web/next-env.d.ts
+
+# Local database & uploads (local-first storage)
+web/dev.db
+web/dev.db-journal
+web/prisma/dev.db
+web/prisma/*.db
+web/storage/
+web/storage/*
+
+# Env (never commit real secrets — commit .env.example instead)
+.env
+.env*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
