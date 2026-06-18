@@ -18,11 +18,19 @@ export async function GET(
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5000";
   const slug = guide.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "guide";
 
-  if (format === "html") {
-    return new Response(guideToHtml(guide, baseUrl), {
+  if (format === "html" || format === "print") {
+    // `print` (or ?print=1) opens the premium document inline and auto-triggers
+    // the print dialog so the user can Save as PDF; plain html downloads.
+    const wantsPrint =
+      format === "print" ||
+      new URL(request.url).searchParams.get("print") === "1";
+    const html = guideToHtml(guide, baseUrl, { autoPrint: wantsPrint });
+    return new Response(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${slug}.html"`,
+        "Content-Disposition": wantsPrint
+          ? "inline"
+          : `attachment; filename="${slug}.html"`,
       },
     });
   }

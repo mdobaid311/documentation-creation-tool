@@ -170,7 +170,15 @@ export function GuideEditor({
             <a href={`/api/guides/${guide.id}/export?format=html`} className="btn btn-ghost btn-sm">
               HTML
             </a>
-            <button onClick={() => window.print()} className="btn btn-ghost btn-sm">
+            <button
+              onClick={() =>
+                window.open(
+                  `/api/guides/${guide.id}/export?format=print`,
+                  "_blank"
+                )
+              }
+              className="btn btn-ghost btn-sm"
+            >
               PDF
             </button>
             <button onClick={toggleShare} className="btn btn-primary btn-sm">
