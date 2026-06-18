@@ -1,5 +1,5 @@
 // Thin client-side fetch helpers for the dashboard/editor mutations.
-import type { Guide } from "./data";
+import type { Guide, NoteKind } from "./data";
 
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -56,6 +56,19 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+    });
+    return (await asJson<{ guide: Guide }>(res)).guide;
+  },
+
+  async addNote(
+    guideId: string,
+    noteKind: NoteKind = "note",
+    index?: number
+  ): Promise<Guide> {
+    const res = await fetch(`/api/guides/${guideId}/steps`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "note", noteKind, index, description: "" }),
     });
     return (await asJson<{ guide: Guide }>(res)).guide;
   },

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { NoteIcon } from "@/components/NoteIcon";
 import { RichText } from "@/components/RichText";
 import { ScreenshotFrame } from "@/components/ScreenshotFrame";
-import type { Rect, Step, StepAnnotation } from "@/lib/data";
+import type { NoteKind, Rect, Step, StepAnnotation } from "@/lib/data";
+import { NOTE_KINDS, NOTE_LABEL, noteKindOf } from "@/lib/steps";
 import {
   DEFAULT_ZOOM,
   MAX_ZOOM,
@@ -38,6 +40,8 @@ interface DragProps {
 export function StepCard({
   step,
   index,
+  num,
+  isNote,
   total,
   onSave,
   onAnnotate,
@@ -48,6 +52,8 @@ export function StepCard({
 }: {
   step: Step;
   index: number;
+  num: number | null;
+  isNote: boolean;
   total: number;
   onSave: (data: { title: string; description: string }) => Promise<void>;
   onAnnotate: (annotation: StepAnnotation) => Promise<void>;
@@ -264,44 +270,110 @@ export function StepCard({
       }
     : null;
 
+  const toolbar = (
+    <div className="no-print absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+      <button
+        className="btn btn-ghost btn-sm cursor-grab px-2 active:cursor-grabbing"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 24, 24);
+          drag.onDragStart();
+        }}
+        onDragEnd={drag.onDragEnd}
+        title="Drag to reorder"
+      >
+        ⠿
+      </button>
+      <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(-1)} disabled={index === 0} title="Move up">↑</button>
+      <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(1)} disabled={index === total - 1} title="Move down">↓</button>
+      <button className="btn btn-danger btn-sm px-2" onClick={onDelete} title="Delete step">✕</button>
+    </div>
+  );
+
+  const setCardRef = (el: HTMLDivElement | null) => {
+    cardRef.current = el;
+  };
+  const dragHandlers = {
+    onDragEnter: drag.onDragEnter,
+    onDragOver: (e: React.DragEvent) => e.preventDefault(),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      drag.onDrop();
+    },
+  };
+
+  // --- Note callout step ---
+  if (isNote) {
+    const kind = noteKindOf(step);
+    return (
+      <div
+        ref={setCardRef}
+        {...dragHandlers}
+        className={`group relative transition ${drag.dragging ? "opacity-40" : ""} ${
+          drag.dragOver ? "ring-2 ring-[var(--accent)] rounded-2xl" : ""
+        }`}
+      >
+        {toolbar}
+        <div className={`callout ${kind}`}>
+          <span className="callout-ic">
+            <NoteIcon kind={kind} size={20} />
+          </span>
+          <div className="callout-body min-w-0 flex-1 pr-24">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="callout-kind">{NOTE_LABEL[kind]}</span>
+              <select
+                className="no-print rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]"
+                value={kind}
+                onChange={(e) =>
+                  onAnnotate({ ...(step.annotation ?? {}), noteKind: e.target.value as NoteKind })
+                }
+              >
+                {NOTE_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {NOTE_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {editing ? (
+              <textarea
+                ref={taRef}
+                className="field-bare callout-text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onBlur={commitText}
+                placeholder="Write a note…"
+              />
+            ) : (
+              <p
+                className="callout-text cursor-text break-words"
+                onClick={() => setEditing(true)}
+                title="Click to edit"
+              >
+                {text ? <RichText text={text} /> : <span className="italic opacity-70">Write a note…</span>}
+                {saving && <span className="no-print ml-2 align-middle text-xs opacity-60">saving…</span>}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      ref={(el) => {
-        cardRef.current = el;
-      }}
-      onDragEnter={drag.onDragEnter}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        drag.onDrop();
-      }}
+      ref={setCardRef}
+      {...dragHandlers}
       className={`step-card group relative flex flex-col gap-3 transition ${
         drag.dragging ? "opacity-40" : ""
       } ${drag.dragOver ? "ring-2 ring-[var(--accent)]" : ""}`}
     >
-      {/* Hover toolbar */}
-      <div className="no-print absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
-        <button
-          className="btn btn-ghost btn-sm cursor-grab px-2 active:cursor-grabbing"
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.effectAllowed = "move";
-            if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 24, 24);
-            drag.onDragStart();
-          }}
-          onDragEnd={drag.onDragEnd}
-          title="Drag to reorder"
-        >
-          ⠿
-        </button>
-        <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(-1)} disabled={index === 0} title="Move up">↑</button>
-        <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(1)} disabled={index === total - 1} title="Move down">↓</button>
-        <button className="btn btn-danger btn-sm px-2" onClick={onDelete} title="Delete step">✕</button>
-      </div>
+      {toolbar}
 
       {/* Number + instruction (click to edit) */}
       <div className="flex items-start gap-3.5 pr-28">
-        <span className="step-num mt-0.5">{index + 1}</span>
+        <span className="step-num mt-0.5">{num ?? index + 1}</span>
         <div className="min-w-0 flex-1">
           {editing ? (
             <textarea
@@ -314,7 +386,7 @@ export function StepCard({
             />
           ) : (
             <p
-              className="group/desc cursor-text text-[16px] leading-7 text-[var(--foreground)]"
+              className="group/desc cursor-text break-words text-[16px] leading-7 text-[var(--foreground)]"
               onClick={() => setEditing(true)}
               title="Click to edit"
             >

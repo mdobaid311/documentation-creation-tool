@@ -2,8 +2,11 @@
 // independent of Prisma so the storage engine can change without rippling
 // through the UI or API layers.
 
-export type StepType = "click" | "type" | "navigate" | "note";
+export type StepType = "click" | "type" | "navigate" | "note" | "manual";
 export type GuideStatus = "draft" | "published";
+
+// Callout variants for note steps.
+export type NoteKind = "note" | "tip" | "warning" | "important" | "success";
 
 export interface Rect {
   x: number;
@@ -27,6 +30,8 @@ export interface StepAnnotation {
   /** Point (in viewport CSS px) the zoom is centered on. Defaults to the click. */
   focusX?: number;
   focusY?: number;
+  /** For note steps: which callout style to render. */
+  noteKind?: NoteKind;
 }
 
 export interface Step {
@@ -98,6 +103,8 @@ export interface AddStepInput {
   screenshot?: string | null;
   /** Position to insert at (0 = before first). Appends if omitted. */
   index?: number;
+  /** For note steps: the callout variant (stored in the annotation). */
+  noteKind?: NoteKind;
 }
 
 export interface UpdateGuideInput {

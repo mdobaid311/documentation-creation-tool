@@ -109,6 +109,85 @@ body {
   border-color: #ddd5f0;
 }
 
+/* Note callouts (note steps) */
+.callout {
+  display: flex;
+  gap: 12px;
+  border: 1px solid;
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+.callout-ic {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.callout-kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.callout-text {
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+.callout.note {
+  background: #f5f5fa;
+  border-color: #e4e4ee;
+}
+.callout.note .callout-ic,
+.callout.note .callout-kind {
+  color: #6b6b79;
+}
+.callout.note .callout-text {
+  color: #3a3a46;
+}
+.callout.tip {
+  background: #eaf1fe;
+  border-color: #cfe0fb;
+}
+.callout.tip .callout-ic,
+.callout.tip .callout-kind {
+  color: #1d4ed8;
+}
+.callout.tip .callout-text {
+  color: #1e3a8a;
+}
+.callout.warning {
+  background: #fef6e7;
+  border-color: #fae3b5;
+}
+.callout.warning .callout-ic,
+.callout.warning .callout-kind {
+  color: #92400e;
+}
+.callout.warning .callout-text {
+  color: #7c3a06;
+}
+.callout.important {
+  background: #feecec;
+  border-color: #f8cfcf;
+}
+.callout.important .callout-ic,
+.callout.important .callout-kind {
+  color: #b42318;
+}
+.callout.important .callout-text {
+  color: #8f1d14;
+}
+.callout.success {
+  background: #e7f7f1;
+  border-color: #c7ebdd;
+}
+.callout.success .callout-ic,
+.callout.success .callout-kind {
+  color: #0b6e4f;
+}
+.callout.success .callout-text {
+  color: #0a5e44;
+}
+
 /* Divider above a card's control row (zoom / redact / replace). */
 .card-controls {
   margin-top: 14px;

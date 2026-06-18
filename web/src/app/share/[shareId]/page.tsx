@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { GuideAvatar } from "@/components/GuideAvatar";
 import { GuideCover } from "@/components/GuideCover";
+import { NoteIcon } from "@/components/NoteIcon";
 import { RichText } from "@/components/RichText";
 import { ScreenshotFrame } from "@/components/ScreenshotFrame";
 import { getGuideRepository } from "@/lib/data";
+import { NOTE_LABEL, isNoteStep, noteKindOf } from "@/lib/steps";
 
 export const dynamic = "force-dynamic";
 
@@ -41,17 +43,39 @@ export default async function SharePage(props: PageProps<"/share/[shareId]">) {
 
       {/* Steps */}
       <ol className="flex flex-col gap-6">
-        {guide.steps.map((step, i) => (
-          <li key={step.id} className="step-card flex flex-col gap-3">
-            <div className="flex items-start gap-3.5">
-              <span className="step-num mt-0.5">{i + 1}</span>
-              <p className="min-w-0 flex-1 text-[16px] leading-7 text-[var(--foreground)]">
-                <RichText text={step.description || step.title || `Step ${i + 1}`} />
-              </p>
-            </div>
-            {step.screenshotUrl && <ScreenshotFrame step={step} index={i} />}
-          </li>
-        ))}
+        {(() => {
+          let n = 0;
+          return guide.steps.map((step, i) => {
+            if (isNoteStep(step)) {
+              const kind = noteKindOf(step);
+              return (
+                <li key={step.id} className={`callout ${kind}`}>
+                  <span className="callout-ic">
+                    <NoteIcon kind={kind} size={20} />
+                  </span>
+                  <div className="callout-body min-w-0 flex-1">
+                    <div className="callout-kind">{NOTE_LABEL[kind]}</div>
+                    <p className="callout-text break-words">
+                      <RichText text={step.description || step.title || NOTE_LABEL[kind]} />
+                    </p>
+                  </div>
+                </li>
+              );
+            }
+            const num = ++n;
+            return (
+              <li key={step.id} className="step-card flex flex-col gap-3">
+                <div className="flex items-start gap-3.5">
+                  <span className="step-num mt-0.5">{num}</span>
+                  <p className="min-w-0 flex-1 break-words text-[16px] leading-7 text-[var(--foreground)]">
+                    <RichText text={step.description || step.title || `Step ${num}`} />
+                  </p>
+                </div>
+                {step.screenshotUrl && <ScreenshotFrame step={step} index={i} />}
+              </li>
+            );
+          });
+        })()}
       </ol>
 
         <footer className="mt-12 border-t border-[var(--border)] pt-6 text-sm text-[var(--muted)]">

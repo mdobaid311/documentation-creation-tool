@@ -6,6 +6,7 @@ import {
   resolveZoom,
 } from "./zoom";
 import { estimateMinutes, formatDate } from "./format";
+import { NOTE_ICON, NOTE_LABEL, isNoteStep, noteKindOf } from "./steps";
 
 // ---------------------------------------------------------------------------
 //  Helpers
@@ -100,7 +101,7 @@ function annotationSvg(
 //  Screenshot frame: browser chrome + zoom-to-cursor + hotspot/arrow
 // ---------------------------------------------------------------------------
 
-function stepFrame(step: Step, index: number, baseUrl: string): string {
+function stepFrame(step: Step, num: number, baseUrl: string): string {
   const img = abs(step.screenshotUrl, baseUrl);
   if (!img) return "";
 
@@ -113,7 +114,7 @@ function stepFrame(step: Step, index: number, baseUrl: string): string {
   }</div>`;
 
   if (!vw || !vh) {
-    return `<figure class="frame">${chrome}<div class="shot"><img class="plain" src="${img}" alt="Step ${index + 1}"/></div></figure>`;
+    return `<figure class="frame">${chrome}<div class="shot"><img class="plain" src="${img}" alt="Step ${num}"/></div></figure>`;
   }
 
   const z = resolveZoom(ann);
@@ -127,12 +128,12 @@ function stepFrame(step: Step, index: number, baseUrl: string): string {
     )
     .join("");
   const marker = focus ? markerFramePos(f.fx, f.fy, z) : null;
-  const anno = marker ? annotationSvg(marker.mx, marker.my, vw, vh, index + 1) : "";
+  const anno = marker ? annotationSvg(marker.mx, marker.my, vw, vh, num) : "";
 
   return `<figure class="frame">${chrome}
     <div class="shot" style="aspect-ratio:${vw}/${vh}">
       <div class="layer" style="transform:translate(${(tx * 100).toFixed(3)}%, ${(ty * 100).toFixed(3)}%) scale(${z})">
-        <img src="${img}" alt="Step ${index + 1}"/>${blurs}
+        <img src="${img}" alt="Step ${num}"/>${blurs}
       </div>${anno}
     </div>
   </figure>`;
@@ -165,19 +166,28 @@ function coverPage(guide: Guide, baseUrl: string): string {
 }
 
 function stepBlock(
-  guide: Guide,
   step: Step,
-  i: number,
+  num: number,
+  isLast: boolean,
   baseUrl: string
 ): string {
-  const last = i === guide.steps.length - 1;
-  return `<article class="step${last ? " last" : ""}">
-    <div class="spine"><span class="badge">${i + 1}</span><span class="spine-line"></span></div>
+  const text = step.description?.trim() || step.title?.trim() || `Step ${num}`;
+  return `<article class="step${isLast ? " last" : ""}">
+    <div class="spine"><span class="badge">${num}</span><span class="spine-line"></span></div>
     <div class="content">
-      <p class="action">${rich(instructionOf(step, i))}</p>
-      ${stepFrame(step, i, baseUrl)}
+      <p class="action">${rich(text)}</p>
+      ${stepFrame(step, num, baseUrl)}
     </div>
   </article>`;
+}
+
+function noteBlock(step: Step, isLast: boolean): string {
+  const kind = noteKindOf(step);
+  const text = step.description?.trim() || step.title?.trim() || NOTE_LABEL[kind];
+  return `<aside class="callout ${kind}${isLast ? " last" : ""}">
+    <span class="callout-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${NOTE_ICON[kind]}</svg></span>
+    <div class="callout-body"><div class="callout-kind">${esc(NOTE_LABEL[kind])}</div><p class="callout-text">${rich(text)}</p></div>
+  </aside>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,8 +199,14 @@ export function guideToHtml(
   baseUrl: string,
   opts: { autoPrint?: boolean } = {}
 ): string {
+  let actionNo = 0;
+  const lastIndex = guide.steps.length - 1;
   const steps = guide.steps
-    .map((s, i) => stepBlock(guide, s, i, baseUrl))
+    .map((s, i) =>
+      isNoteStep(s)
+        ? noteBlock(s, i === lastIndex)
+        : stepBlock(s, ++actionNo, i === lastIndex, baseUrl)
+    )
     .join("\n");
 
   const autoPrint = opts.autoPrint
@@ -339,15 +355,32 @@ export function guideToHtml(
   .spine-line { flex: 1; width: 2px; background: var(--ink-100); margin-top: 12px; border-radius: 2px; }
   
   .content { flex: 1; min-width: 0; }
-  .action { 
-    margin: 4px 0 16px; 
-    font-size: 17px; 
-    line-height: 1.45; 
-    font-weight: 600; 
+  .action {
+    margin: 4px 0 16px;
+    font-size: 17px;
+    line-height: 1.45;
+    font-weight: 600;
     color: var(--ink-900);
-    letter-spacing: -0.015em; 
-    max-width: 60ch; 
+    letter-spacing: -0.015em;
+    max-width: 60ch;
+    overflow-wrap: anywhere;
   }
+  .callout { display:flex; gap:12px; border:1px solid; border-radius:14px; padding:14px 16px;
+    margin:24px 0; break-inside:avoid; page-break-inside:avoid; }
+  .callout.last { margin-bottom:0; }
+  .callout-ic { flex:0 0 auto; margin-top:1px; }
+  .callout-kind { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:3px; }
+  .callout-text { font-size:15px; line-height:1.55; overflow-wrap:anywhere; margin:0; }
+  .callout.note { background:#F5F5FA; border-color:#E4E4EE; }
+  .callout.note .callout-ic,.callout.note .callout-kind{ color:#6B6B79; } .callout.note .callout-text{ color:#3A3A46; }
+  .callout.tip { background:#EAF1FE; border-color:#CFE0FB; }
+  .callout.tip .callout-ic,.callout.tip .callout-kind{ color:#1D4ED8; } .callout.tip .callout-text{ color:#1E3A8A; }
+  .callout.warning { background:#FEF6E7; border-color:#FAE3B5; }
+  .callout.warning .callout-ic,.callout.warning .callout-kind{ color:#92400E; } .callout.warning .callout-text{ color:#7C3A06; }
+  .callout.important { background:#FEECEC; border-color:#F8CFCF; }
+  .callout.important .callout-ic,.callout.important .callout-kind{ color:#B42318; } .callout.important .callout-text{ color:#8F1D14; }
+  .callout.success { background:#E7F7F1; border-color:#C7EBDD; }
+  .callout.success .callout-ic,.callout.success .callout-kind{ color:#0B6E4F; } .callout.success .callout-text{ color:#0A5E44; }
   
   /* Elegant Stripe/Linear UI Key Chips */
   .k { 

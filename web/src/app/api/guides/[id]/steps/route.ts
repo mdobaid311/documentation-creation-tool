@@ -17,11 +17,12 @@ export async function POST(
     // empty body → blank step
   }
   const guide = await getGuideRepository().addStep(id, {
-    type: body.type ?? "note",
+    type: body.type ?? "manual",
     title: body.title,
     description: body.description,
     screenshot: body.screenshot ?? null,
     index: body.index,
+    noteKind: body.noteKind,
   });
   if (!guide) return error("Guide not found", 404);
   return json({ guide }, { status: 201 });

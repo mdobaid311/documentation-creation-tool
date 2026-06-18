@@ -73,15 +73,38 @@ async function startRecording(tab) {
   // open before the extension loaded.
   if (tab?.id) await injectTab(tab.id);
 
+  const url = tab?.url ?? "";
   const session = {
     startedAt: Date.now(),
-    sourceUrl: tab?.url ?? "",
+    sourceUrl: url,
     title: tab?.title ?? "",
     favicon: tab?.favIconUrl ?? "",
     steps: [],
   };
+
+  // First step: a screenshot of the page where recording started, with an
+  // instruction to navigate to that URL.
+  if (/^https?:\/\//i.test(url)) {
+    let screenshot = null;
+    try {
+      screenshot = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: "png",
+      });
+    } catch (e) {
+      console.warn("initial captureVisibleTab failed:", e?.message);
+    }
+    session.steps.push({
+      type: "navigate",
+      title: "Open the page",
+      description: `Open your web browser and navigate to the following URL: ${url}`,
+      annotation: null,
+      pageUrl: url,
+      screenshot,
+    });
+  }
+
   await set({ [KEYS.recording]: true, [KEYS.session]: session });
-  await setBadge("REC", "#dc2626");
+  await setBadge(session.steps.length ? String(session.steps.length) : "REC", "#dc2626");
   return getState();
 }
 

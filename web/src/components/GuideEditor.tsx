@@ -7,6 +7,7 @@ import { GuideCover } from "@/components/GuideCover";
 import { StepCard } from "@/components/StepCard";
 import { api } from "@/lib/client";
 import { readImageFile } from "@/lib/file";
+import { isNoteStep } from "@/lib/steps";
 import type { Guide, StepAnnotation } from "@/lib/data";
 
 export function GuideEditor({
@@ -83,6 +84,18 @@ export function GuideEditor({
       setAdding(false);
     }
   }
+  async function addNote(index?: number) {
+    setAdding(true);
+    try {
+      setGuide(await api.addNote(guide.id, "note", index));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  // Sequential numbers for action steps (note callouts are skipped).
+  let _stepNo = 0;
+  const stepNums = guide.steps.map((s) => (isNoteStep(s) ? null : ++_stepNo));
 
   async function deleteStep(stepId: string) {
     if (!confirm("Delete this step?")) return;
@@ -258,10 +271,17 @@ export function GuideEditor({
         <div className="flex flex-col">
           {guide.steps.map((step, i) => (
             <Fragment key={step.id}>
-              <StepInserter at={i} onAdd={addStep} disabled={adding} />
+              <StepInserter
+                at={i}
+                onAddStep={addStep}
+                onAddNote={addNote}
+                disabled={adding}
+              />
               <StepCard
                 step={step}
                 index={i}
+                num={stepNums[i]}
+                isNote={isNoteStep(step)}
                 total={guide.steps.length}
                 onSave={(data) => saveStep(step.id, data)}
                 onAnnotate={(annotation) => saveAnnotation(step.id, annotation)}
@@ -281,15 +301,25 @@ export function GuideEditor({
           ))}
         </div>
 
-        {/* Add step at the end */}
-        <button
-          onClick={() => addStep()}
-          disabled={adding}
-          className="no-print mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] py-5 font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-        >
-          <span className="text-lg leading-none">＋</span>
-          {adding ? "Adding…" : guide.steps.length === 0 ? "Add a step" : "Add a step at the end"}
-        </button>
+        {/* Add step / note at the end */}
+        <div className="no-print mt-4 flex gap-3">
+          <button
+            onClick={() => addStep()}
+            disabled={adding}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] py-5 font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <span className="text-lg leading-none">＋</span>
+            {guide.steps.length === 0 ? "Add a step" : "Add a step"}
+          </button>
+          <button
+            onClick={() => addNote()}
+            disabled={adding}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] py-5 font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <span className="text-base leading-none">✎</span>
+            Add note
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -307,29 +337,40 @@ function SparkleIcon() {
   );
 }
 
-// A slim "insert step here" affordance shown between/above step cards.
+// An "insert here" affordance that reveals "Add step" / "Add note" on hover.
 function StepInserter({
   at,
-  onAdd,
+  onAddStep,
+  onAddNote,
   disabled,
 }: {
   at: number;
-  onAdd: (index: number) => void;
+  onAddStep: (index: number) => void;
+  onAddNote: (index: number) => void;
   disabled: boolean;
 }) {
   return (
-    <div
-      role="button"
-      title="Add a step here"
-      aria-label="Add a step here"
-      onClick={() => !disabled && onAdd(at)}
-      className="no-print group/ins flex h-9 w-full cursor-pointer items-center justify-center"
-    >
-      <span className="h-px flex-1 bg-transparent transition group-hover/ins:bg-[var(--accent)]/30" />
-      <span className="mx-2 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm leading-none text-[var(--muted)] opacity-0 transition group-hover/ins:border-[var(--accent)] group-hover/ins:text-[var(--accent)] group-hover/ins:opacity-100">
-        ＋
+    <div className="no-print group/ins flex h-10 w-full items-center justify-center">
+      <span className="h-px flex-1 bg-transparent transition group-hover/ins:bg-[var(--accent)]/25" />
+      <span className="mx-2 flex items-center gap-1.5 opacity-0 transition group-hover/ins:opacity-100">
+        <button
+          type="button"
+          onClick={() => !disabled && onAddStep(at)}
+          disabled={disabled}
+          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <span className="text-sm leading-none">＋</span> Step
+        </button>
+        <button
+          type="button"
+          onClick={() => !disabled && onAddNote(at)}
+          disabled={disabled}
+          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <span className="text-sm leading-none">✎</span> Note
+        </button>
       </span>
-      <span className="h-px flex-1 bg-transparent transition group-hover/ins:bg-[var(--accent)]/30" />
+      <span className="h-px flex-1 bg-transparent transition group-hover/ins:bg-[var(--accent)]/25" />
     </div>
   );
 }

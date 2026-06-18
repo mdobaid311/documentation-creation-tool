@@ -198,6 +198,11 @@ export class PrismaGuideRepository implements GuideRepository {
       screenshotPath = await getStorage().save(buffer, contentType);
     }
 
+    // Note steps carry their callout variant in the annotation JSON.
+    const annotation = input.noteKind
+      ? JSON.stringify({ noteKind: input.noteKind })
+      : null;
+
     await prisma.$transaction([
       // Shift everything at/after the insert point down by one.
       ...existing
@@ -209,10 +214,11 @@ export class PrismaGuideRepository implements GuideRepository {
         data: {
           guideId,
           order: at,
-          type: input.type ?? "note",
+          type: input.type ?? "manual",
           title: input.title ?? "",
           description: input.description ?? "",
           screenshotPath,
+          annotation,
         },
       }),
       prisma.guide.update({ where: { id: guideId }, data: {} }), // bump updatedAt
