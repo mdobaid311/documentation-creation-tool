@@ -187,7 +187,8 @@ export function GuideEditor({
               onClick={() =>
                 window.open(
                   `/api/guides/${guide.id}/export?format=print`,
-                  "_blank"
+                  "_blank",
+                  "noopener"
                 )
               }
               className="btn btn-ghost btn-sm"
