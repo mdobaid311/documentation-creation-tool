@@ -9,9 +9,12 @@ import {
 
 export interface ZoomOverride {
   zoom: number;
-  focusX: number;
-  focusY: number;
+  /** Marker / zoom-focus point in viewport px. Omitted → no marker, centered zoom. */
+  focusX?: number;
+  focusY?: number;
   blurs?: Rect[];
+  /** Coordinate system for the image (captured viewport, or an upload's natural size). */
+  viewport?: { w: number; h: number };
 }
 
 // Renders a step's screenshot with Scribe-style zoom-to-cursor and a soft
@@ -36,13 +39,16 @@ export function ScreenshotFrame({
     );
   }
 
+  // When an override is supplied (editor), it is the single source of truth for
+  // the marker — we do NOT fall back to the step's stored click/rect, so an
+  // upload with no marker stays marker-free and a removed marker stays removed.
   const ann: StepAnnotation | null = override
     ? {
-        ...(step.annotation ?? {}),
+        viewport: override.viewport ?? step.annotation?.viewport,
         zoom: override.zoom,
         focusX: override.focusX,
         focusY: override.focusY,
-        ...(override.blurs !== undefined ? { blurs: override.blurs } : {}),
+        blurs: override.blurs ?? step.annotation?.blurs,
       }
     : step.annotation;
 

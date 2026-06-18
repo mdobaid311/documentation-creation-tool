@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { NoteIcon } from "@/components/NoteIcon";
 import { RichText } from "@/components/RichText";
 import { ScreenshotFrame } from "@/components/ScreenshotFrame";
+import type { ZoomOverride } from "@/components/ScreenshotFrame";
 import type { NoteKind, Rect, Step, StepAnnotation } from "@/lib/data";
 import { NOTE_KINDS, NOTE_LABEL, noteKindOf } from "@/lib/steps";
 import {
@@ -15,16 +16,17 @@ import {
   resolveZoom,
 } from "@/lib/zoom";
 
-function initialFocus(ann: StepAnnotation | null) {
+// The marker / zoom-focus point in viewport px, or null when the step has no
+// marker yet (e.g. a freshly uploaded image). Captured steps anchor on the
+// recorded click; uploads stay marker-free until the user adds one.
+function initialFocus(ann: StepAnnotation | null): { fx: number; fy: number } | null {
   const vp = ann?.viewport;
+  if (!vp) return null;
   const fx =
-    ann?.focusX ??
-    ann?.clickX ??
-    (ann?.rect ? ann.rect.x + ann.rect.w / 2 : vp ? vp.w / 2 : 0);
+    ann?.focusX ?? ann?.clickX ?? (ann?.rect ? ann.rect.x + ann.rect.w / 2 : undefined);
   const fy =
-    ann?.focusY ??
-    ann?.clickY ??
-    (ann?.rect ? ann.rect.y + ann.rect.h / 2 : vp ? vp.h / 2 : 0);
+    ann?.focusY ?? ann?.clickY ?? (ann?.rect ? ann.rect.y + ann.rect.h / 2 : undefined);
+  if (fx == null || fy == null) return null;
   return { fx, fy };
 }
 
@@ -105,41 +107,71 @@ export function StepCard({
   }
 
   // --- zoom / focus / redaction state ---
-  const vp = step.annotation?.viewport;
+  // `vp` is the coordinate system for the image. Captured steps carry it; for an
+  // uploaded image we derive it from the image's natural size on load (below).
+  const [vp, setVp] = useState(step.annotation?.viewport);
   const [zoom, setZoom] = useState(() => resolveZoom(step.annotation));
-  const [focus, setFocus] = useState(() => initialFocus(step.annotation ?? null));
+  const [focus, setFocus] = useState<{ fx: number; fy: number } | null>(() =>
+    initialFocus(step.annotation ?? null)
+  );
   const [blurs, setBlurs] = useState<Rect[]>(() => step.annotation?.blurs ?? []);
   const [redact, setRedact] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Resync if the step reloads from the server.
+  // Resync if the step reloads from the server (e.g. image replaced).
   useEffect(() => {
+    setVp(step.annotation?.viewport);
     setZoom(resolveZoom(step.annotation));
     setFocus(initialFocus(step.annotation ?? null));
     setBlurs(step.annotation?.blurs ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.id]);
 
-  const override = useMemo(
-    () => (vp ? { zoom, focusX: focus.fx, focusY: focus.fy, blurs } : null),
-    [vp, zoom, focus.fx, focus.fy, blurs]
+  const override = useMemo<ZoomOverride | null>(
+    () =>
+      vp
+        ? { zoom, focusX: focus?.fx, focusY: focus?.fy, blurs, viewport: vp }
+        : null,
+    [vp, zoom, focus, blurs]
   );
 
+  // Build the annotation to persist. The marker is represented solely by
+  // focusX/focusY here, so any legacy clickX/rect is normalised away.
   function persistAll(
-    next: { zoom?: number; fx?: number; fy?: number; blurs?: Rect[] },
+    next: { zoom?: number; fx?: number | null; fy?: number | null; blurs?: Rect[] },
     immediate = false
   ) {
     const annotation: StepAnnotation = {
       ...(step.annotation ?? {}),
+      ...(vp ? { viewport: vp } : {}),
       zoom: next.zoom ?? zoom,
-      focusX: next.fx ?? focus.fx,
-      focusY: next.fy ?? focus.fy,
       blurs: next.blurs ?? blurs,
     };
+    delete annotation.clickX;
+    delete annotation.clickY;
+    delete annotation.rect;
+    const fx = next.fx !== undefined ? next.fx : focus?.fx ?? null;
+    const fy = next.fy !== undefined ? next.fy : focus?.fy ?? null;
+    if (fx != null && fy != null) {
+      annotation.focusX = fx;
+      annotation.focusY = fy;
+    } else {
+      delete annotation.focusX;
+      delete annotation.focusY;
+    }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     const run = () => onAnnotate(annotation);
     if (immediate) run();
     else saveTimer.current = setTimeout(run, 350);
+  }
+
+  // First time we see an uploaded image, capture its natural size as the
+  // coordinate system so zoom / marker / redaction all work on it.
+  function measureViewport(w: number, h: number) {
+    if (vp || !w || !h) return;
+    const next = { w, h };
+    setVp(next);
+    onAnnotate({ ...(step.annotation ?? {}), viewport: next });
   }
 
   function onZoom(v: number) {
@@ -149,20 +181,31 @@ export function StepCard({
 
   function onPick(cx: number, cy: number) {
     if (!vp) return;
-    const { focusX, focusY } = frameToViewport(cx, cy, zoom, focus.fx / vp.w, focus.fy / vp.h, vp);
+    const curFx = (focus?.fx ?? vp.w / 2) / vp.w;
+    const curFy = (focus?.fy ?? vp.h / 2) / vp.h;
+    const { focusX, focusY } = frameToViewport(cx, cy, zoom, curFx, curFy, vp);
     setFocus({ fx: focusX, fy: focusY });
     persistAll({ fx: focusX, fy: focusY }, true);
   }
 
+  function addMarker() {
+    if (!vp) return;
+    const f = { fx: vp.w / 2, fy: vp.h / 2 };
+    setFocus(f);
+    setZoom((z) => (z > 1 ? z : DEFAULT_ZOOM));
+    persistAll({ fx: f.fx, fy: f.fy, zoom: zoom > 1 ? zoom : DEFAULT_ZOOM }, true);
+  }
+
+  function removeMarker() {
+    setFocus(null);
+    persistAll({ fx: null, fy: null }, true);
+  }
+
   function onReset() {
-    const f = initialFocus({
-      ...(step.annotation ?? {}),
-      focusX: undefined,
-      focusY: undefined,
-    });
+    const f = initialFocus(step.annotation ?? null);
     setZoom(DEFAULT_ZOOM);
     setFocus(f);
-    persistAll({ zoom: DEFAULT_ZOOM, fx: f.fx, fy: f.fy }, true);
+    persistAll({ zoom: DEFAULT_ZOOM, fx: f?.fx ?? null, fy: f?.fy ?? null }, true);
   }
 
   // --- redaction drawing ---
@@ -178,8 +221,8 @@ export function StepCard({
 
   // Frame-space rect (fractions) for an existing blur — used for hit-testing.
   function blurFrameRect(b: Rect) {
-    const ffx = focus.fx / vp!.w;
-    const ffy = focus.fy / vp!.h;
+    const ffx = (focus?.fx ?? vp!.w / 2) / vp!.w;
+    const ffy = (focus?.fy ?? vp!.h / 2) / vp!.h;
     const { tx, ty } = panFractions(ffx, ffy, zoom);
     return {
       fx: tx + (b.x / vp!.w) * zoom,
@@ -221,8 +264,10 @@ export function StepCard({
     drawing.current = false;
     const { cx, cy } = fracOf(e);
     setSel(null);
-    const p1 = frameToViewport(startRef.current.cx, startRef.current.cy, zoom, focus.fx / vp.w, focus.fy / vp.h, vp);
-    const p2 = frameToViewport(cx, cy, zoom, focus.fx / vp.w, focus.fy / vp.h, vp);
+    const ffx = (focus?.fx ?? vp.w / 2) / vp.w;
+    const ffy = (focus?.fy ?? vp.h / 2) / vp.h;
+    const p1 = frameToViewport(startRef.current.cx, startRef.current.cy, zoom, ffx, ffy, vp);
+    const p2 = frameToViewport(cx, cy, zoom, ffx, ffy, vp);
     const rect: Rect = {
       x: Math.min(p1.focusX, p2.focusX),
       y: Math.min(p1.focusY, p2.focusY),
@@ -413,6 +458,23 @@ export function StepCard({
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         {step.screenshotUrl ? (
           <>
+            {!vp && (
+              // Establish a coordinate system for an uploaded image from its
+              // natural size, so zoom / marker / redaction become available.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={step.screenshotUrl}
+                alt=""
+                aria-hidden
+                className="hidden"
+                onLoad={(e) =>
+                  measureViewport(
+                    e.currentTarget.naturalWidth,
+                    e.currentTarget.naturalHeight
+                  )
+                }
+              />
+            )}
             <div className="relative">
               <ScreenshotFrame
                 step={step}
@@ -454,6 +516,16 @@ export function StepCard({
                   />
                   <span className="w-10 tabular-nums">{Math.round(zoom * 100)}%</span>
                   <button className="btn btn-ghost btn-sm" onClick={onReset}>Reset</button>
+                  <span className="mx-0.5 h-4 w-px bg-[var(--border)]" aria-hidden />
+                  {focus ? (
+                    <button className="btn btn-ghost btn-sm" onClick={removeMarker} title="Remove the click marker">
+                      <MarkerIcon /> Remove marker
+                    </button>
+                  ) : (
+                    <button className="btn btn-ghost btn-sm" onClick={addMarker} title="Add a click marker">
+                      <MarkerIcon /> Add marker
+                    </button>
+                  )}
                 </>
               )}
               {vp && (
@@ -464,8 +536,14 @@ export function StepCard({
                   {redact ? "Done redacting" : "Redact"}
                 </button>
               )}
-              {redact && (
+              {redact ? (
                 <span className="text-xs">Drag to blur an area · click a box to remove</span>
+              ) : (
+                vp && (
+                  <span className="text-xs">
+                    {focus ? "Click the image to move the marker" : "Click the image to place a marker"}
+                  </span>
+                )
               )}
               <button
                 className="btn btn-ghost btn-sm ml-auto"
@@ -496,6 +574,15 @@ function ZoomIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
       <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
       <path d="M20 20l-3.2-3.2M11 8.5v5M8.5 11h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MarkerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="4" fill="currentColor" />
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" opacity="0.6" />
     </svg>
   );
 }
