@@ -202,6 +202,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await captureStep(msg.step, sender.tab?.windowId);
         sendResponse({ ok: true });
         break;
+      case "SCREENSHOT": {
+        // Manual full-page screenshot step, triggered from the popup button.
+        const shotTab = msg.tab ?? sender.tab;
+        await captureStep(
+          {
+            type: "manual",
+            title: "",
+            description: "",
+            annotation: null,
+            pageUrl: shotTab?.url ?? "",
+            favicon: shotTab?.favIconUrl ?? "",
+          },
+          shotTab?.windowId
+        );
+        sendResponse(await getState());
+        break;
+      }
       case "GET_STATE":
         sendResponse(await getState());
         break;

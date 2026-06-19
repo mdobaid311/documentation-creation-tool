@@ -4,6 +4,7 @@ const DEFAULT_SERVER = "http://localhost:5000";
 const el = (id) => document.getElementById(id);
 const startBtn = el("startBtn");
 const stopBtn = el("stopBtn");
+const shotBtn = el("shotBtn");
 const cancelBtn = el("cancelBtn");
 const statusText = el("statusText");
 const dot = el("dot");
@@ -24,6 +25,7 @@ function render(state) {
   dot.classList.toggle("rec", rec);
   startBtn.classList.toggle("hidden", rec);
   stopBtn.classList.toggle("hidden", !rec);
+  shotBtn.classList.toggle("hidden", !rec);
   cancelBtn.classList.toggle("hidden", !rec);
   if (rec) {
     statusText.textContent = `Recording — ${state.stepCount} step${
@@ -61,6 +63,24 @@ stopBtn.addEventListener("click", async () => {
     statusText.textContent = res?.error || "Save failed.";
     await refresh();
   }
+});
+
+shotBtn.addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab && /^(chrome|edge|about|chrome-extension):/.test(tab.url || "")) {
+    statusText.textContent = "Can't screenshot browser pages — open a website.";
+    return;
+  }
+  shotBtn.disabled = true;
+  const before = shotBtn.textContent;
+  shotBtn.textContent = "Capturing…";
+  const state = await send({ type: "SCREENSHOT", tab });
+  shotBtn.textContent = "✓ Screenshot added";
+  setTimeout(() => {
+    shotBtn.textContent = before;
+    shotBtn.disabled = false;
+    render(state);
+  }, 800);
 });
 
 cancelBtn.addEventListener("click", async () => {
