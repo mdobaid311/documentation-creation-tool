@@ -95,7 +95,7 @@ export const api = {
     return (await asJson<{ guide: Guide }>(res)).guide;
   },
 
-  async rephrase(guideId: string): Promise<Guide> {
+  async generateDescriptions(guideId: string): Promise<Guide> {
     const res = await fetch(`/api/guides/${guideId}/rephrase`, {
       method: "POST",
     });

@@ -23,9 +23,12 @@ const esc = (s: string) =>
 const clamp = (n: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, n));
 
-// Quoted UI element names render as inline "key chips" (Stripe-style).
+// UI element names render as inline "key chips" (Stripe-style). Bold is
+// recognised from either markdown **...** or straight/curly double-quotes.
 function rich(text: string): string {
-  return esc(text).replace(/[“"]([^”"]+)[”"]/g, '<b class="k">$1</b>');
+  return esc(text)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b class="k">$1</b>')
+    .replace(/[“"]([^”"\n]+)[”"]/g, '<b class="k">$1</b>');
 }
 
 function hostOf(url: string): string {

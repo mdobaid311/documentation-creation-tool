@@ -136,21 +136,24 @@ export function GuideEditor({
     if (res.shareUrl) await navigator.clipboard?.writeText(res.shareUrl).catch(() => {});
   }
 
-  const [rephrasing, setRephrasing] = useState(false);
-  async function rephraseDocs() {
+  const [generating, setGenerating] = useState(false);
+  async function generateDescriptions() {
     if (
       !confirm(
-        "Rephrase every step description with AI to make them formal and clear? This rewrites the current text."
+        "Generate the guide title, description, and every step description with AI by inferring the flow from your captured steps? This rewrites the current text."
       )
     )
       return;
-    setRephrasing(true);
+    setGenerating(true);
     try {
-      setGuide(await api.rephrase(guide.id));
+      const next = await api.generateDescriptions(guide.id);
+      setGuide(next);
+      setTitle(next.title);
+      setDescription(next.description);
     } catch (err) {
       alert((err as Error).message);
     } finally {
-      setRephrasing(false);
+      setGenerating(false);
     }
   }
 
@@ -170,12 +173,12 @@ export function GuideEditor({
               <span className="text-xs text-[var(--muted)]">Saved {savedAt}</span>
             )}
             <button
-              onClick={rephraseDocs}
-              disabled={rephrasing}
+              onClick={generateDescriptions}
+              disabled={generating}
               className="btn btn-ghost btn-sm"
-              title="Rewrite all step descriptions with AI to be formal and clear"
+              title="Generate the guide title, description, and every step description with AI"
             >
-              <SparkleIcon /> {rephrasing ? "Rephrasing…" : "Rephrase docs"}
+              <SparkleIcon /> {generating ? "Generating…" : "Generate descriptions"}
             </button>
             <a href={`/api/guides/${guide.id}/export?format=md`} className="btn btn-ghost btn-sm">
               Markdown
