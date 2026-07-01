@@ -32,6 +32,8 @@ export interface GuideRepository {
     image: string
   ): Promise<Guide | null>;
   removeStep(guideId: string, stepId: string): Promise<Guide | null>;
+  /** Duplicate a step (with its own image copy), inserting it right after. */
+  duplicateStep(guideId: string, stepId: string): Promise<Guide | null>;
   reorderSteps(guideId: string, orderedStepIds: string[]): Promise<Guide | null>;
 
   /** Enable/disable public sharing; returns the (possibly new) share slug. */

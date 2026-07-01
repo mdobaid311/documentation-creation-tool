@@ -8,6 +8,11 @@ export interface StorageProvider {
   save(data: Buffer, contentType: string): Promise<string>;
   /** Delete previously saved data. Missing keys are ignored. */
   remove(key: string): Promise<void>;
+  /**
+   * Duplicate stored data, returning a fresh independent key (so deleting or
+   * replacing one copy never affects the other). Null/missing keys → null.
+   */
+  copy(key: string | null | undefined): Promise<string | null>;
   /** Resolve a stored key to a URL the browser can load. */
   publicUrl(key: string | null | undefined): string | null;
 }

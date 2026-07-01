@@ -48,6 +48,14 @@ export const api = {
     return (await asJson<{ guide: Guide }>(res)).guide;
   },
 
+  async duplicateStep(guideId: string, stepId: string): Promise<Guide> {
+    const res = await fetch(
+      `/api/guides/${guideId}/steps/${stepId}/duplicate`,
+      { method: "POST" }
+    );
+    return (await asJson<{ guide: Guide }>(res)).guide;
+  },
+
   async addStep(
     guideId: string,
     data: { description?: string; screenshot?: string | null; index?: number } = {}

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { StorageProvider } from "./storage-provider";
 
@@ -36,6 +36,22 @@ export class LocalStorageProvider implements StorageProvider {
       await unlink(path.join(this.dir, key));
     } catch {
       // Already gone — nothing to do.
+    }
+  }
+
+  async copy(key: string | null | undefined): Promise<string | null> {
+    if (!key) return null;
+    const ext = path.extname(key).slice(1) || "bin";
+    const newKey = `${randomUUID()}.${ext}`;
+    try {
+      await mkdir(this.dir, { recursive: true });
+      await copyFile(
+        path.join(this.dir, path.basename(key)),
+        path.join(this.dir, newKey)
+      );
+      return newKey;
+    } catch {
+      return null;
     }
   }
 

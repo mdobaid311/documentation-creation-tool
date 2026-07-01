@@ -320,6 +320,41 @@ export class PrismaGuideRepository implements GuideRepository {
     return this.get(guideId);
   }
 
+  async duplicateStep(guideId: string, stepId: string): Promise<Guide | null> {
+    const step = await prisma.step.findFirst({ where: { id: stepId, guideId } });
+    if (!step) return null;
+
+    // Give the copy its own image file so deleting either step is safe.
+    const screenshotPath = step.screenshotPath
+      ? await getStorage().copy(step.screenshotPath)
+      : null;
+
+    const after = await prisma.step.findMany({
+      where: { guideId, order: { gt: step.order } },
+    });
+
+    await prisma.$transaction([
+      // Make room: shift everything after the original down by one.
+      ...after.map((s) =>
+        prisma.step.update({ where: { id: s.id }, data: { order: s.order + 1 } })
+      ),
+      prisma.step.create({
+        data: {
+          guideId,
+          order: step.order + 1,
+          type: step.type,
+          title: step.title,
+          description: step.description,
+          screenshotPath,
+          annotation: step.annotation,
+          pageUrl: step.pageUrl,
+        },
+      }),
+      prisma.guide.update({ where: { id: guideId }, data: {} }), // bump updatedAt
+    ]);
+    return this.get(guideId);
+  }
+
   async reorderSteps(
     guideId: string,
     orderedStepIds: string[]

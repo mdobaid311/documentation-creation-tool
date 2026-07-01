@@ -49,6 +49,7 @@ export function StepCard({
   onAnnotate,
   onSetImage,
   onDelete,
+  onDuplicate,
   onMove,
   drag,
 }: {
@@ -61,6 +62,7 @@ export function StepCard({
   onAnnotate: (annotation: StepAnnotation) => Promise<void>;
   onSetImage: (image: string) => Promise<void>;
   onDelete: () => void;
+  onDuplicate: () => void;
   onMove: (dir: -1 | 1) => void;
   drag: DragProps;
 }) {
@@ -332,6 +334,7 @@ export function StepCard({
       </button>
       <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(-1)} disabled={index === 0} title="Move up">↑</button>
       <button className="btn btn-ghost btn-sm px-2" onClick={() => onMove(1)} disabled={index === total - 1} title="Move down">↓</button>
+      <button className="btn btn-ghost btn-sm px-2" onClick={onDuplicate} title="Duplicate step">⧉</button>
       <button className="btn btn-danger btn-sm px-2" onClick={onDelete} title="Delete step">✕</button>
     </div>
   );

@@ -99,7 +99,19 @@ export function GuideEditor({
 
   async function deleteStep(stepId: string) {
     if (!confirm("Delete this step?")) return;
-    setGuide(await api.deleteStep(guide.id, stepId));
+    try {
+      setGuide(await api.deleteStep(guide.id, stepId));
+    } catch (err) {
+      alert(`Couldn't delete that step: ${(err as Error).message}`);
+    }
+  }
+
+  async function duplicateStep(stepId: string) {
+    try {
+      setGuide(await api.duplicateStep(guide.id, stepId));
+    } catch (err) {
+      alert(`Couldn't duplicate that step: ${(err as Error).message}`);
+    }
   }
 
   async function move(index: number, dir: -1 | 1) {
@@ -288,6 +300,7 @@ export function GuideEditor({
                 onAnnotate={(annotation) => saveAnnotation(step.id, annotation)}
                 onSetImage={(image) => setStepImage(step.id, image)}
                 onDelete={() => deleteStep(step.id)}
+                onDuplicate={() => duplicateStep(step.id)}
                 onMove={(dir) => move(i, dir)}
                 drag={{
                   dragging: dragIndex === i,
